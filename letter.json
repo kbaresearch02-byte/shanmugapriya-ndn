@@ -1,0 +1,190 @@
+{
+ "opening": [
+  "Dear Editor,",
+  "We thank you and the three reviewers for the careful and constructive assessment of our manuscript. The comments led us to re-examine the experimental pipeline in depth. In doing so we found that the original experiment runner did not inject the failure and Interest-flood events of the scenario definitions, and did not attach the attacker nodes, into the control-law comparison. This explains the identical rows of the former Table 6 noted by Reviewer 2. We fixed the defect, re-implemented the scenario injection with explicit verification, and re-ran the entire study as a replicated experiment (2,210 runs, 10 independent seeds per configuration). Several conclusions of the original submission changed as a result, and we have revised them transparently rather than defend them. Every change requested by the reviewers has been implemented; our point-by-point responses follow. Reviewer comments are reproduced in blue italics. Section, table, figure and equation numbers refer to the revised manuscript, and in the highlighted version all revised text is marked in yellow."
+ ],
+ "summary": [
+  "New Section 2 (Related Work), organised into TCP/RDMA congestion control and NDN congestion control, with a summary comparison table (Table 1) and an explicit discussion of why DCQCN, TIMELY, Swift and HPCC do not transfer to NDN (Reviewer 1, W1/W4).",
+  "Corrected Methods. The simulator is now described accurately (the authors' Python discrete-event NDN engine, not ns-3), and Eqs. (4)–(5) now state the PID law actually implemented, with an analytical operating point (Eq. 13). The LSTM's coupling to control is now explicit (Eq. 9), and all equations have been re-typeset uniformly (Reviewers 2 and 3).",
+  "Replicated experiments. The design now has 108 configurations × 10 seeds, plus ablation, sampling-rate, extended 60 s, open-loop forecasting and DDoS-defence experiments (2,210 runs). Results are reported as mean ± SD with 95% CIs and analysed with Friedman and Holm-corrected paired tests (Reviewer 2).",
+  "New baselines: a re-implemented PCON-style scheme and an oracle, delay-aware static window (Static-BDP). The former 'oracle-tuned Fixed' baseline was mislabelled and is now honestly described as Static-16 (Reviewers 2 and 3).",
+  "Failure and DDoS scenarios are now genuinely injected, with time-series figures and before/during/after tables. The previous claims of 'statistical invariance' and 'DDoS resilience without a detector' were not supported and have been withdrawn and replaced by the measured behaviour (Reviewer 2).",
+  "A closed-loop ablation of the LSTM layer, a persistence baseline for forecast accuracy, a sampling-interval study and measured processing overhead (Reviewers 1, 2 and 3).",
+  "New Discussion sections on fairness-restoring extensions (Reviewer 3) and hardware deployability on programmable switches and SmartNICs (Reviewer 1); the Conclusions now separate demonstrated findings from anticipated benefits (Reviewer 2).",
+  "Editorial requirements: a 'Declarations' section with Ethical approval, Consent to participate and Consent to publish; a data availability statement; and 14 additional, directly relevant references."
+ ],
+ "sections": [
+  {
+   "title": "Editor",
+   "items": [
+    {
+     "label": "Comment E1.",
+     "comment": "A number of additional specific references have been suggested ... please ensure that directly-relevant previous work is adequately acknowledged and that the original contribution is sufficiently emphasized.",
+     "response": [
+      "We added 14 references that are directly relevant to the revised content: data-centre/RDMA congestion control (HPCC, DCQCN, TIMELY, Swift, DCTCP) for the motivation requested by Reviewer 1; programmable data planes and in-network ML (P4, NDN.p4, ENDN, Domino, Taurus, N3IC) for the deployability discussion; and the statistical procedures used (Friedman, Wilcoxon, Holm). We did not add references that are not directly relevant. The original contribution is now stated precisely in a novelty paragraph at the end of Section 1, which separates what is new (adapting the components to NDN's Data-carried feedback loop, the replicated quantification of each layer's contribution including an ablation, and the evidence that congestion control and PIT admission are complementary) from what is established."
+     ],
+     "changes": "Section 1 (novelty paragraph); Section 2; references [61]–[74]."
+    },
+    {
+     "label": "Comment E2.",
+     "comment": "Data Availability Statement: please select 'yes' under the data availability declaration.",
+     "response": [
+      "We will select 'yes' in the submission system. The manuscript now contains a Data availability statement under Declarations covering the simulation code (including the revision experiment harness), topology and scenario definitions, parameter files, the per-run results of all 2,210 runs, the statistical outputs and the scripts that regenerate every table and figure."
+     ],
+     "changes": "Declarations → Data availability."
+    },
+    {
+     "label": "Comment E3.",
+     "comment": "Authors are requested to include a separate section titled 'Declarations' with Ethical approval, Consent to participate and Consent to publish as individual subheadings.",
+     "response": [
+      "Done. A 'Declarations' section now contains the three requested subheadings, each addressed separately, followed by Funding, Competing interests, Author contributions, Data availability and Acknowledgments. The previous overlapping headings (Institutional Review Board Statement, Clinical Trial Number, Ethics and Consent to Participate, Informed Consent Statement) have been consolidated into this structure."
+     ],
+     "changes": "Declarations section."
+    }
+   ]
+  },
+  {
+   "title": "Reviewer 1",
+   "items": [
+    {
+     "label": "W1. Motivation and background.",
+     "comment": "The paper should better explain why existing congestion control mechanisms, such as HPCC, may not be directly applicable to NDN and what limitations they would encounter.",
+     "response": [
+      "We agree and have strengthened the motivation in two places. The second paragraph of the Introduction now explains the four architectural differences: multi-source/cached retrieval, reactive loss signals, inverted sender/receiver roles with hop-by-hop Data return along PIT state, and Interest flooding. It names the specific facilities that DCQCN, TIMELY, Swift and HPCC depend on and that NDN lacks: per-flow sender state at the NIC, a single fixed path per flow, NIC hardware timestamps, and, for HPCC, INT telemetry appended by switches and echoed in ACKs. NDN has no ACKs to carry telemetry, a request may be satisfied by a cache at any distance, and consecutive Interests may take different paths. Section 2.1 develops this per scheme. It also notes what does transfer: our PID error signal reuses DCTCP's mark-fraction estimator, and a Swift-style delay target is implicit in Eq. (13)."
+     ],
+     "changes": "Section 1 (paragraph 2); Section 2.1; Table 1."
+    },
+    {
+     "label": "W2. Timeliness and overhead of the LSTM predictor.",
+     "comment": "Clarify how the smoothed queue samples are collected and how frequently the predictor is updated; evaluate the effect of sampling rates on accuracy and control, quantify communication and processing overhead; consider online learning.",
+     "response": [
+      "Collection and update frequency are now specified (Sections 3.4 and 3.6). Each monitored router face samples its own queue every Δts (default 0.1 s), updates the EWMA and threshold, and runs one LSTM inference per sample on a window of the last 16 samples to predict 0.8 s ahead. The samples are local, so no measurement traffic crosses the network; the only feedback is one mark bit in Data packets that are sent anyway, hence zero communication overhead.",
+      "Sampling rate (new Section 4.8, Figure 15, Table A5): we varied Δts over 0.02, 0.05, 0.1, 0.2 and 0.5 s with a forecaster pre-trained for each interval. Forecast MAE is flat up to 0.2 s and degrades at 0.5 s; goodput and queue are unaffected because the PID loop acts on per-Interest RTT samples at RTT timescales, so its control information is never older than one RTT, whatever the predictor's sampling rate.",
+      "Processing overhead was measured per run: about 43 µs per detector sample and 2.3 ms per LSTM inference in our interpreted Python implementation (≈2.3% of a CPU core per face at 0.1 s); Section 5.4 estimates the compiled cost.",
+      "Online learning is now implemented. The model is pre-trained on held-out seeds and fine-tuned online every 2 s (Section 3.6). We report honestly that online fine-tuning did not improve accuracy on regulated queues.",
+      "We also want to be transparent about a related finding. Compared with a persistence baseline, the LSTM reduces forecast error by 15–54% on dynamic (AIMD) queues but not on the regulated queues of the PID loop, and the ablation requested by Reviewers 2 and 3 shows no closed-loop benefit (Section 4.7). The manuscript now positions the forecaster as an optional monitoring and early-warning component."
+     ],
+     "changes": "Sections 3.4, 3.6, 4.7, 4.8, 5.4; Figure 15; Table A5."
+    },
+    {
+     "label": "W3. Practical deployability.",
+     "comment": "The design involves floating-point operations and multiplications, which may pose challenges on programmable switches such as Intel Tofino. Discuss feasibility or whether FPGA-based SmartNICs would be more suitable.",
+     "response": [
+      "New Section 5.4 addresses this directly. (i) The PID law runs on consumers and needs no switch support. (ii) The router detector can be expressed in integer arithmetic within Tofino-class constraints: the EWMA with α = 2⁻³ becomes a shift-and-add; the window mean and variance are replaced by EWMA mean and mean-absolute-deviation estimators, which are multiplication-free; and the threshold test needs a shift and an add. Each step is a single-register read–modify–write compatible with the per-stage atomicity of packet-transaction compilers [74], and queue depth is available as egress metadata. (iii) The real obstacle on such switches is NDN name parsing and lookup (NDN.p4, ENDN), not the marking logic, which needs no name lookup. (iv) LSTM inference is unsuitable for switch pipelines and belongs on the control-plane CPU, an FPGA SmartNIC or an edge server; it runs once per sampling interval, not per packet. The ablation further shows that the forecaster can be omitted from the PID loop without loss. We state explicitly that this mapping is a design argument that we have not implemented in hardware (Conclusions, 'Anticipated benefits')."
+     ],
+     "changes": "Section 5.4; Section 6."
+    },
+    {
+     "label": "W4. Organization of related work.",
+     "comment": "Categorize prior work into TCP/RDMA congestion control and NDN congestion control; add a summary table comparing key mechanisms, design assumptions and applicability to NDN.",
+     "response": [
+      "Done. The new Section 2 has three subsections: 2.1 TCP/IP and RDMA (loss/delay-based end-host control, AQM/ECN, data-centre and RDMA control); 2.2 NDN (hop-by-hop and rate-based control, learning-based control); and 2.3 learning-based prediction and IFA defence. Table 1 compares 12 representative approaches by domain, key mechanism, feedback/state, design assumptions and applicability to NDN, and positions this work in the last row."
+     ],
+     "changes": "Section 2; Table 1."
+    }
+   ]
+  },
+  {
+   "title": "Reviewer 2",
+   "items": [
+    {
+     "label": "Comment 2.1.",
+     "comment": "Explain whether LSTM predictions directly modify the Interest window, marking threshold, or congestion decisions. An ablation study comparing PID control with and without LSTM prediction is necessary.",
+     "response": [
+      "We must first correct the record. In the original submission the LSTM was trained and scored open-loop and did not influence control at all; the text implied otherwise. In the revised framework the LSTM affects only the router's congestion decision (Eq. 9): a forecast that crosses the adaptive threshold sets the mark. It never modifies the consumer window or the threshold directly; any effect on the window is mediated by marks through the PID mark term (Section 3.6).",
+      "The requested ablation (Section 4.7, Table A4) compares PID with PID+LSTM in 3 topologies × 3 scenarios × 3 threshold floors × 10 seeds. At the default floor the two are indistinguishable (9 of 9 cells within 1%), because neither the regulated queue nor its forecast reaches the threshold. With a tighter floor the forecaster raises proactive marks and lowers the p95 queue (by up to 53%), but at a goodput cost of 5–39%. Our conclusion is that the predictive layer adds no control value to the PID loop. We have revised the contributions, abstract and conclusions accordingly, and hypothesis H2 is explicitly qualified."
+     ],
+     "changes": "Sections 1, 3.6 (Eq. 9), 4.7; Table A4; Abstract; Section 6."
+    },
+    {
+     "label": "Comment 2.2.",
+     "comment": "The experiments appear to use a single random seed. Conduct independent experiments using multiple random seeds and report mean values, standard deviations, and 95% confidence intervals. The statistical analysis should also account for dependencies between scenarios and control-law comparisons.",
+     "response": [
+      "The reviewer is right that the original study used a single fixed seed. The revised study uses 10 independent seeds per configuration, with stochastic forwarding, start offsets and attacker jitter (Section 3.2). All tables report mean ± SD, and the main tables give 95% t-confidence intervals; figures show 95% CIs.",
+      "Dependencies: (i) the seed is the unit of replication, and comparisons are paired by seed because all control laws in a configuration share the random streams; (ii) a Friedman test per topology × scenario × metric cell checks for any difference before pairwise testing; (iii) all 270 pairwise p-values (PID versus five laws × 18 cells × 3 metrics) are adjusted together with the Holm–Bonferroni procedure, which controls the family-wise error rate under arbitrary dependence between scenarios and comparisons; and (iv) no test pools runs from different configurations as if they were independent. Friedman tests are significant in 54/54 cells, and 203 of 270 pairwise comparisons remain significant after Holm correction (Section 4.9; full outputs in supplementary CSV files). We use paired t-tests as the primary test and exact Wilcoxon tests as a check, and explain why: with n = 10 the smallest exact Wilcoxon p-value (0.002) cannot pass a Holm threshold over 270 tests. The former sign test over 24 single-seed configurations has been removed."
+     ],
+     "changes": "Sections 3.2, 3.8, 4.9; all result tables; supplementary stats_tests.csv, stats_ablation.csv."
+    },
+    {
+     "label": "Comment 2.3.",
+     "comment": "Table 6 reports identical goodput and queue values for normal operation, stress, link failure, node failure and DDoS. Clarify whether these scenarios produce meaningful changes. Time-series results before and after each failure are required.",
+     "response": [
+      "We are grateful for this comment, which led us to a real defect. The identical values arose because the experiment runner used for the control-law comparison applied only the scenarios' duration and seed: the failure events and the Interest flood were never injected (the scenario files also left the target link/node unspecified), and the attacker nodes were never attached. The scenarios therefore did not change routing, capacity or load at all. The small 'module default' difference came only from a different default seed.",
+      "We re-implemented scenario injection with explicit targets (Section 3.3): link failure 6–12 s, node failure 6–12 s, a load surge at 8 s, double load, and a 500 Interest/s-per-attacker flood from 5 s. Every run's event log and attack counters were verified (Section 3.9). The new results show meaningful changes (Table 8 and Tables A1–A3). Time series around each failure are shown in Figure 11 and around the flood in Figure 12, and Tables 9, A3 and 10 report goodput before, during and after each event together with recovery times.",
+      "The robustness claims have changed accordingly. Under failures the loop does not stay invariant; it adapts and recovers within about 0.1–1.2 s of restoration (Section 4.5). Under the flood, PIT exhaustion reduces legitimate PID goodput by 73%, 90% and 98% on T1–T3, so congestion control alone does not provide IFA resilience. Adding a simple PIT fair-share admission rule restores 100% and 105% of pre-attack goodput on T1 and T2, but not on T3, where attackers share faces with consumers (Section 4.6). The former claims of 'statistical invariance' and DDoS resilience 'without a dedicated attack detector' have been withdrawn."
+     ],
+     "changes": "Sections 3.3, 3.7, 3.9, 4.5, 4.6; Tables 8–10, A1–A3; Figures 11–12; Abstract; Section 6."
+    },
+    {
+     "label": "Comment 2.4.",
+     "comment": "24 simulation runs across three topologies, six scenarios and three control laws correspond to 54 configurations. Explain how the 24 runs were selected and distinguish configurations from repetitions.",
+     "response": [
+      "The reviewer is correct that '24 runs' was inconsistent with the 54-configuration factorial. The number did not correspond to a well-defined set of configurations or independent repetitions, and we apologise for the inconsistency. The revised design is fully factorial and states both explicitly (Section 3.3, 'Configurations versus repetitions'): 3 topologies × 6 scenarios × 6 control laws = 108 configurations, each repeated with 10 independent seeds (1,080 runs), plus 1,130 runs of additional experiments (DDoS defence 180, ablation 360, open-loop forecasting 360, sampling 200, extended 60 s 30), for 2,210 runs in total."
+     ],
+     "changes": "Section 3.3; Abstract."
+    },
+    {
+     "label": "Comment 2.5.",
+     "comment": "Revise the conclusion to distinguish experimentally demonstrated findings from anticipated practical benefits.",
+     "response": [
+      "Done. Section 6 now has two explicitly labelled lists: 'Experimentally demonstrated findings', each with the measured quantity, including the negative results (T2 goodput, no LSTM control benefit, PIT exhaustion under flooding); and 'Anticipated practical benefits (not demonstrated in this study)', covering hardware deployability, energy/memory savings and fleet-wide defaults."
+     ],
+     "changes": "Section 6."
+    },
+    {
+     "label": "Comment 2.6 (general).",
+     "comment": "Resolve inconsistencies in simulation configurations and reported throughput; provide more comprehensive comparisons with existing NDN congestion-control schemes.",
+     "response": [
+      "Configurations: Table 2 now lists every topology's nodes, consumers, attackers, aggregation bottlenecks and monitored faces, and Table 3 lists all parameters. One inconsistency deserves explicit mention. T3 goodput (≈49 Mb/s) exceeded its '6 Mb/s bottleneck' because T3 has two aggregation points: the 6 Mb/s trunk serves only the R1-side consumers, and all consumers share the 50 Mb/s producer link. The topology description has been corrected (Section 3.3).",
+      "Comparisons: we added a re-implemented PCON-style scheme (CoDel-style router marking with mark-reactive consumer AIMD) [16], the NDN reference design, and an oracle delay-aware static window. Against PCON-style, PID achieves -0.9–6.5% goodput difference with 16.4–27.5% lower queue and no timeouts. Section 5.2 positions the results against the hop-by-hop shapers, ICP, MIRCC and learning-based NDN controllers."
+     ],
+     "changes": "Sections 3.3, 3.5, 4.2–4.4, 5.2; Tables 2–6."
+    }
+   ]
+  },
+  {
+   "title": "Reviewer 3",
+   "items": [
+    {
+     "label": "Comment 3.1. Limited contribution.",
+     "comment": "Articulate what specific technical challenges were overcome in adapting these components to NDN. How does the PID controller handle the one-Data-per-Interest invariant mathematically? What modifications were needed for the LSTM to work with queue occupancy time series?",
+     "response": [
+      "PID and the invariant (Section 3.5, Eqs. 4, 5 and 13). The consumer updates once per window of Data, i.e. once per RTT. Because each Data closes exactly one Interest, every Data yields an unambiguous RTT sample of the path that actually served it, with no ACK compression, delayed-ACK or cumulative-ACK ambiguity. The error signal therefore combines a DCTCP-style mark-fraction estimate with the normalised queuing delay d = (R − Rmin)/Rmin, and the window update is multiplicative-decrease above a dead-band ε and additive-increase below it, with integrator clamping and leakage against wind-up. The dead-band yields the closed-form equilibrium q* ≈ εCRmin/(8λS) (Eq. 13), about one packet on T1, which explains the measured three-packet operating point. We also corrected Eqs. (4)–(5): the original text described a textbook PID on queue error that differed from the implementation.",
+      "LSTM modifications (Section 3.6): (i) inputs normalised by the face's buffer capacity, so one model generalises across links; (ii) residual forecasting (predicting the change in occupancy), which makes persistence the model's default and fixed a bias of the direct-level model; (iii) weights shared across monitored faces; (iv) pre-training on held-out seeds with low-rate online fine-tuning; and (v) coupling through the marking decision only. Each is motivated in the text, and the accuracy is reported against a persistence baseline.",
+      "The novelty is now articulated in a dedicated paragraph at the end of Section 1, and the contributions list has been rewritten to state what each layer contributes, including the layers whose contribution turned out to be small."
+     ],
+     "changes": "Section 1 (contributions, novelty); Sections 3.5, 3.6; Eqs. (4), (5), (8), (13)."
+    },
+    {
+     "label": "Comment 3.2. Fairness degradation on T1.",
+     "comment": "Outline potential fairness-restoring approaches and their expected impact on the achieved gains.",
+     "response": [
+      "With replicated runs, PID's Jain index on T1 is 0.982 (others ≥ 0.997). The largest gap appears when late joiners compete with established flows (T2 load surge). New Section 5.3 explains the cause (synchronised multiplicative cuts and different base RTTs) and outlines three remedies with their expected impact: (i) RTT-normalised additive increase, which equalises rates across base RTTs and leaves queue/latency gains unchanged because Eq. (13) does not depend on the increase step; (ii) per-face mark-rate equalisation at the router, which raises the Jain index at one counter per face and a possible small goodput cost; and (iii) a virtual-queue fairness term in Eq. (5), which drives the loop towards max-min fairness at the cost of an extra gain and slower convergence. Implementing these is identified as future work."
+     ],
+     "changes": "Section 5.3; Section 5.5 (iii)."
+    },
+    {
+     "label": "Comment 3.3. Limited evaluation / 'oracle-tuned' Fixed baseline; LSTM ablation.",
+     "comment": "If the Fixed window is truly oracle-tuned it should achieve near-optimal goodput without pathological queueing. Clarify the tuning procedure and consider a delay-aware fixed window. Add an ablation with and without the predictive layer.",
+     "response": [
+      "The reviewer's suspicion is correct. The 'Fixed' baseline was not oracle-tuned: it was the platform's default window of 16 Interests per consumer, applied unchanged to every topology. This explains its 57.8-packet queue on T3 and its under-utilisation of T2. It is now honestly labelled Static-16. We added the suggested delay-aware static baseline, Static-BDP (Section 3.5): each consumer's window is its max-min fair rate (water-filling over the shortest-path DAG, with parallel branches pooled) times its base RTT, plus a two-packet allowance. This is a genuine oracle because it uses global knowledge of topology, capacities and demand. It achieves the highest goodput on T2 and T3 (1.3–12.8% above PID) but carries larger standing queues (PID's queue is 47.0–81.0% smaller) and higher RTT, and cannot adapt to failures, surges or floods. We report this trade-off openly (Sections 4.2–4.4 and 5.1).",
+      "The ablation with and without the predictive layer is reported in Section 4.7 and Table A4 (see also our response to Reviewer 2, Comment 2.1)."
+     ],
+     "changes": "Sections 3.5, 4.2–4.4, 4.7, 5.1; Tables 4–7, A4."
+    },
+    {
+     "label": "Comment 3.4. Miscellaneous errors.",
+     "comment": "'Result-s' heading, missing period after 'Figure 1 summarizes...', awkward phrasing ('the same detector operates unchanged from the 6 Mbps trunk of T3 to the access links'), inconsistent equation formatting.",
+     "response": [
+      "All corrected: the heading now reads '4. Results'; the Figure 1 paragraph has been rewritten with correct punctuation; the awkward sentence was removed together with the claim it supported; and all 13 equations were re-typeset in a single consistent Office-Math style (Cambria Math, uniform size, right-aligned numbers, consistent notation q̄, θ, w_k). We proofread the whole manuscript and also fixed: inconsistent section numbering (some headings were unnumbered); a duplicated citation '[22,24].[22,24]'; an unfinished sentence ('...was included in the'); the jitter definition, now computed exactly as stated; and the description of AIMD, which had wrongly claimed it reacts to marks. The SmartArt diagram of the experimental procedure was replaced by an editable numbered list, and a stray embedded file reference was removed."
+     ],
+     "changes": "Throughout."
+    }
+   ]
+  }
+ ],
+ "closing": [
+  "In addition to the requested changes, we made the following corrections on our own initiative, because they affect the accuracy of the record: (i) the simulation environment is now correctly described as the authors' discrete-event NDN engine (the original text described it as ns-3/ndnSIM-based); (ii) the forwarding plane now excludes a failed face when an alternative next hop exists, as NFD does; without this, the multipath strategy kept sending Interests to dead faces during failures; (iii) an attacker node was added to T1 so that the flood scenario is defined on every topology; (iv) the 'module default' scenario, which differed from normal operation only in its seed, was replaced by a load-surge scenario.",
+  "We recognise that several headline claims of the original submission are weaker in the revised version: PID goodput on the multipath topology, the predictive layer's control value, and attack resilience without PIT admission. We believe the revised manuscript is scientifically sounder for reporting them as measured. The replicated evidence supports the paper's core contribution: a consumer-side PID loop on Data-carried marks and per-Interest delay that holds NDN bottleneck queues at about three packets with no timeouts and substantially better goodput than loss-driven control. It also gives a clearer picture of where prediction and PIT-level defences fit. We thank the reviewers again for comments that substantially improved the work."
+ ]
+}
